@@ -6,7 +6,7 @@ use crate::config::MAX_APP_NUM;
 use crate::loader::{get_num_app, init_app_cx};
 use lazy_static::*;
 use switch::__switch;
-use task::{TaskControlBlock, TaskStatus};
+pub use task::{TaskControlBlock, TaskStatus};
 use crate::sync::UPSafeCell;
 
 pub use context::TaskContext;
