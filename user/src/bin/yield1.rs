@@ -14,9 +14,9 @@ const HEIGHT: usize = 5;
 */
 
 #[no_mangle]
-#[no_mangle]
 fn main() -> i32 {
     for i in 0..HEIGHT {
+        println!("----------");
         let buf = ['B' as u8; WIDTH];
         println!(
             "{} [{}/{}]",

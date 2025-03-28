@@ -1,5 +1,7 @@
 use core::arch::asm;
 
+use crate::TaskInfo;
+
 use super::{Stat, TimeVal};
 
 pub const SYSCALL_OPENAT: usize = 56;
@@ -24,6 +26,7 @@ pub const SYSCALL_MAIL_READ: usize = 401;
 pub const SYSCALL_MAIL_WRITE: usize = 402;
 pub const SYSCALL_DUP: usize = 24;
 pub const SYSCALL_PIPE: usize = 59;
+pub const SYSCALL_TASK_INFO: usize = 410;
 
 pub fn syscall(id: usize, args: [usize; 3]) -> isize {
     let mut ret: isize;
@@ -178,4 +181,8 @@ pub fn sys_dup(fd: usize) -> isize {
 
 pub fn sys_pipe(pipe: &mut [usize]) -> isize {
     syscall(SYSCALL_PIPE, [pipe.as_mut_ptr() as usize, 0, 0])
+}
+
+pub fn sys_task_info(id: usize, task_info: *mut TaskInfo) -> isize {
+    syscall(SYSCALL_TASK_INFO, [id, task_info as usize, 0])
 }

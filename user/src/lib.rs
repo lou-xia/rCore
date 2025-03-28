@@ -4,6 +4,8 @@
 #![feature(panic_info_message)]
 #![feature(alloc_error_handler)]
 
+pub const MAX_SYSCALL_NUM: usize = 512;
+
 #[macro_use]
 pub mod console;
 mod lang_items;
@@ -13,6 +15,8 @@ extern crate alloc;
 extern crate core;
 #[macro_use]
 extern crate bitflags;
+
+use core::array;
 
 use buddy_system_allocator::LockedHeap;
 pub use console::{flush, STDIN, STDOUT};
@@ -236,4 +240,52 @@ pub fn dup(fd: usize) -> isize {
 }
 pub fn pipe(pipe_fd: &mut [usize]) -> isize {
     sys_pipe(pipe_fd)
+}
+
+pub fn info(id: usize, task_info: &mut TaskInfo ) -> isize {
+    sys_task_info(id, task_info)
+}
+
+
+#[derive(Copy, Clone)]
+pub struct TaskInfo {
+    pub id: usize,
+    pub call: [SyscallInfo; MAX_SYSCALL_NUM],
+    pub time: usize,
+    pub start_time: usize,
+}
+
+#[derive(Copy, Clone)]
+pub struct SyscallInfo {
+    pub id: usize,
+    pub times: usize
+}
+
+impl TaskInfo {
+    pub fn init() -> Self {
+        Self {
+            id: 0,
+            call: array::from_fn(|i| SyscallInfo {
+                id: i as usize,
+                times: 0,
+            }),
+            time: 0,
+            start_time: 0,
+        }
+    }
+    pub fn display(&self) {
+        println!("Task ID: {}", self.id);
+        println!("Time: {} us", self.time);
+        println!("Syscalls:");
+        let mut flag = false;
+        for i in 0..MAX_SYSCALL_NUM {
+            if self.call[i].times!= 0 {
+                flag = true;
+                println!("  {}: {}", i, self.call[i].times);
+            }
+        }
+        if !flag {
+            println!("  None");
+        }
+    }
 }

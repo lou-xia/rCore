@@ -38,6 +38,7 @@ pub fn enable_timer_interrupt() {
 pub fn trap_handler(cx: &mut TrapContext) -> &mut TrapContext {
     let scause = scause::read();
     let stval = stval::read();
+    // println!("code: {:x} Trap: {:?}, stval = {:#x}",scause.code() , scause.cause(), stval);
     match scause.cause() {
         Trap::Exception(Exception::UserEnvCall) => {
             cx.sepc += 4;
@@ -57,7 +58,8 @@ pub fn trap_handler(cx: &mut TrapContext) -> &mut TrapContext {
             suspend_current_and_run_next();
         }
         _ => {
-            panic!("Unsupported trap {:?}, stval = {:#x}!", scause.cause(), stval);
+            let current_task = crate::task::get_current_task_id();
+            panic!("Unsupported trap {:?}, stval = {:#x}, current_task = {:#x}!", scause.cause(), stval, current_task);
         }
     }
     cx
