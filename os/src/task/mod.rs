@@ -160,7 +160,8 @@ pub fn add_syscall(id: usize) {
     if id >= 512 {
         panic!("Invalid syscall id: {}", id);
     }
-    inner.tasks[current].task_info.call[id].times += 1;
+    // inner.tasks[current].task_info.call[id].times += 1;
+    inner.tasks[current].task_info.add_syscall_by_id(id);
 }
 
 pub fn get_current_task_id() -> usize {

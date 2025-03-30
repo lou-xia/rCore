@@ -13,6 +13,8 @@ use riscv::register::{
     },
     stval,
     sie,
+    uepc,
+    sepc,
 };
 use crate::syscall::syscall;
 use crate::task::{
@@ -59,7 +61,7 @@ pub fn trap_handler(cx: &mut TrapContext) -> &mut TrapContext {
         }
         _ => {
             let current_task = crate::task::get_current_task_id();
-            panic!("Unsupported trap {:?}, stval = {:#x}, current_task = {:#x}!", scause.cause(), stval, current_task);
+            panic!("Unsupported trap {:?}, stval = {:#x}, sepc = {:#x}, current_task = {:#x}!", scause.cause(), stval, cx.sepc, current_task);
         }
     }
     cx

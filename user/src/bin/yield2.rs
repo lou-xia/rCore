@@ -15,9 +15,9 @@ const HEIGHT: usize = 5;
 
 #[no_mangle]
 fn main() -> i32 {
-    let mut task_info = TaskInfo::init();
-    info(2, &mut task_info);
-    task_info.display();
+    // let mut task_info = TaskInfo::init();
+    // info(1, &mut task_info);
+    // task_info.display();
 
     for i in 0..HEIGHT {
         let buf = ['C' as u8; WIDTH];

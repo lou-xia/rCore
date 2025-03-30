@@ -4,7 +4,7 @@
 #![feature(panic_info_message)]
 #![feature(alloc_error_handler)]
 
-pub const MAX_SYSCALL_NUM: usize = 512;
+pub const MAX_SYSCALL_NUM: usize = 8;
 
 #[macro_use]
 pub mod console;
@@ -15,8 +15,6 @@ extern crate alloc;
 extern crate core;
 #[macro_use]
 extern crate bitflags;
-
-use core::array;
 
 use buddy_system_allocator::LockedHeap;
 pub use console::{flush, STDIN, STDOUT};
@@ -41,7 +39,9 @@ pub extern "C" fn _start() -> ! {
         HEAP.lock()
             .init(HEAP_SPACE.as_ptr() as usize, USER_HEAP_SIZE);
     }
-    exit(main());
+    let retnum = main();
+    println!("Exiting with status {}", retnum);
+    exit(retnum);
 }
 
 #[linkage = "weak"]
@@ -265,10 +265,7 @@ impl TaskInfo {
     pub fn init() -> Self {
         Self {
             id: 0,
-            call: array::from_fn(|i| SyscallInfo {
-                id: i as usize,
-                times: 0,
-            }),
+            call: [SyscallInfo { id: 0, times: 0 }; MAX_SYSCALL_NUM],
             time: 0,
             start_time: 0,
         }
@@ -281,7 +278,7 @@ impl TaskInfo {
         for i in 0..MAX_SYSCALL_NUM {
             if self.call[i].times!= 0 {
                 flag = true;
-                println!("  {}: {}", i, self.call[i].times);
+                println!("  {}: {}", self.call[i].id, self.call[i].times);
             }
         }
         if !flag {

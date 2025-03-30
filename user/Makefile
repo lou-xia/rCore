@@ -12,10 +12,11 @@ TEST ?= 0
 # INFO is my test for fn sys_task_info()
 INFO ?= 0
 ifeq ($(TEST), 0)
-	ifneq ($(INFO), 0)
-		# APPS := $(wildcard $(APP_DIR)/yield*.rs) \
-		# 	$(wildcard $(APP_DIR)/power*.rs) \
-        #     $(wildcard $(APP_DIR)/z*.rs)
+	ifeq ($(INFO), 1)
+		APPS := $(wildcard $(APP_DIR)/yield*.rs) \
+			$(wildcard $(APP_DIR)/power*.rs) \
+            $(wildcard $(APP_DIR)/z*.rs)
+	else if ($(INFO), 2)
 		APPS := $(wildcard $(APP_DIR)/yield*.rs)
 	else
 		APPS :=  $(filter-out $(wildcard $(APP_DIR)/test*.rs), $(wildcard $(APP_DIR)/*.rs))
