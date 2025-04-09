@@ -30,7 +30,7 @@ extern crate bitflags;
 use log::*;
 
 #[path = "boards/qemu.rs"]
-mod board;
+mod qemu;
 
 #[macro_use]
 mod console;
@@ -71,7 +71,7 @@ pub fn rust_main() -> ! {
     info!("[kernel] back to world!");
     mm::remap_test();
     trap::init();
-    //trap::enable_interrupt();
+    // trap::enable_interrupt();
     trap::enable_timer_interrupt();
     timer::set_next_trigger();
     task::run_first_task();
