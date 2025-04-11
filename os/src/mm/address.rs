@@ -80,7 +80,7 @@ impl VirtAddr {
 }
 impl From<VirtAddr> for VirtPageNum {
     fn from(v: VirtAddr) -> Self {
-        assert_eq!(v.page_offset(), 0);
+        assert_eq!(v.page_offset(), 0, "Virtual address {:?} is not page-aligned!", v);
         v.floor()
     }
 }
@@ -145,7 +145,7 @@ impl StepByOne for VirtPageNum {
     }
 }
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone,Debug)]
 pub struct SimpleRange<T> where
     T: StepByOne + Copy + PartialEq + PartialOrd + Debug, {
     l: T,
@@ -168,6 +168,7 @@ impl<T> IntoIterator for SimpleRange<T> where
         SimpleRangeIterator::new(self.l, self.r)
     }
 }
+
 pub struct SimpleRangeIterator<T> where
     T: StepByOne + Copy + PartialEq + PartialOrd + Debug, {
     current: T,

@@ -3,6 +3,7 @@ mod switch;
 mod task;
 
 use crate::loader::{get_num_app, get_app_data};
+use crate::mm::{MapPermission, VirtAddr};
 use crate::trap::TrapContext;
 use crate::sync::UPSafeCell;
 use lazy_static::*;
@@ -114,6 +115,24 @@ impl TaskManager {
         } else {
             panic!("All applications completed!");
         }
+    }
+
+    pub fn current_task_mmap(&self, start: usize, len: usize, perm: MapPermission) -> isize {
+        let mut inner = self.inner.exclusive_access();
+        let current = inner.current_task;
+        let memset = inner.tasks[current].memory_set.get_memset();
+        let start_va = VirtAddr::from(start);
+        let end_va = VirtAddr::from(start + len);
+        memset.insert_framed_area(start_va, end_va, perm)
+    }
+    
+    pub fn current_task_munmap(&self, start: usize, len: usize) -> isize {
+        let mut inner = self.inner.exclusive_access();
+        let current = inner.current_task;
+        let memset = inner.tasks[current].memory_set.get_memset();
+        let start_va = VirtAddr::from(start);
+        let end_va = VirtAddr::from(start + len);
+        memset.alt_framed_area(start_va, end_va)
     }
 }
 

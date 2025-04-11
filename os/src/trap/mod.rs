@@ -1,5 +1,7 @@
 mod context;
 
+use core::arch::{asm, global_asm};
+
 use riscv::register::{
     mtvec::TrapMode,
     stvec,
@@ -45,7 +47,7 @@ pub fn enable_timer_interrupt() {
 }
 
 #[no_mangle]
-pub fn trap_handler() -> ! {
+pub fn trap_handler() {
     set_kernel_trap_entry();
     let cx = current_trap_cx();
     let scause = scause::read();
@@ -57,6 +59,11 @@ pub fn trap_handler() -> ! {
         }
         Trap::Exception(Exception::StoreFault) |
         Trap::Exception(Exception::StorePageFault) => {
+            println!("[kernel] PageFault in application, bad addr = {:#x}, bad instruction = {:#x}, core dumped.", stval, cx.sepc);
+            exit_current_and_run_next();
+        }
+        Trap::Exception(Exception::LoadFault) |
+        Trap::Exception(Exception::LoadPageFault) => {
             println!("[kernel] PageFault in application, bad addr = {:#x}, bad instruction = {:#x}, core dumped.", stval, cx.sepc);
             exit_current_and_run_next();
         }
@@ -76,7 +83,7 @@ pub fn trap_handler() -> ! {
 }
 
 #[no_mangle]
-pub fn trap_return() -> ! {
+pub fn trap_return() -> () {
     set_user_trap_entry();
     let trap_cx_ptr = TRAP_CONTEXT;
     let user_satp = current_user_token();

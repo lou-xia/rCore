@@ -2,6 +2,7 @@ use super::{frame_alloc, PhysPageNum, FrameTracker, VirtPageNum, VirtAddr, StepB
 use alloc::vec::Vec;
 use alloc::vec;
 use bitflags::*;
+use crate::syscall::TimeVal;
 
 bitflags! {
     pub struct PTEFlags: u8 {
@@ -111,10 +112,12 @@ impl PageTable {
         result
     }
     #[allow(unused)]
-    pub fn map(&mut self, vpn: VirtPageNum, ppn: PhysPageNum, flags: PTEFlags) {
+    pub fn map(&mut self, vpn: VirtPageNum, ppn: PhysPageNum, flags: PTEFlags) -> isize {
         let pte = self.find_pte_create(vpn).unwrap();
-        assert!(!pte.is_valid(), "vpn {:?} is mapped before mapping", vpn);
+        if pte.is_valid() {return -1;}
+        // assert!(!pte.is_valid(), "vpn {:?} is mapped before mapping", vpn);
         *pte = PageTableEntry::new(ppn, flags | PTEFlags::V);
+        0
     }
     #[allow(unused)]
     pub fn unmap(&mut self, vpn: VirtPageNum) {
@@ -154,4 +157,19 @@ pub fn translated_byte_buffer(token: usize, ptr: *const u8, len: usize) -> Vec<&
         start = end_va.into();
     }
     v
+}
+
+pub fn translated_byte_timeval(token: usize, ts_ptr: usize, now_time: TimeVal) {
+    let page_table = PageTable::from_token(token);
+    let ts_va = VirtAddr::from(ts_ptr);
+    let ppn = page_table
+        .translate(ts_va.floor())
+        .unwrap()
+        .ppn();
+    let slice = &mut ppn.get_bytes_array()[ts_va.page_offset()..];
+    let ts = slice.as_mut_ptr() as *mut TimeVal;
+    unsafe {
+        (*ts).sec = now_time.sec;
+        (*ts).usec = now_time.usec;
+    }
 }
