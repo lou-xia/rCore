@@ -1,5 +1,4 @@
 use core::arch::asm;
-use core::ops::Index;
 
 use super::{PageTable, PageTableEntry, PTEFlags};
 use super::{VirtPageNum, VirtAddr, PhysPageNum, PhysAddr};
