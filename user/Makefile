@@ -8,10 +8,17 @@ OBJCOPY := rust-objcopy --binary-architecture=riscv64
 PY := python3
 
 TEST ?= 0
+INFO ?= -1
 ifeq ($(TEST), 0)
 	APPS :=  $(filter-out $(wildcard $(APP_DIR)/test*.rs), $(wildcard $(APP_DIR)/*.rs))
 else
-	APPS :=  $(wildcard $(APP_DIR)/test$(TEST)*.rs)
+	ifeq ($(INFO), -1)
+		APPS :=  $(wildcard $(APP_DIR)/test$(TEST)*.rs)
+	else ifeq ($(INFO), 0)
+		APPS :=  $(wildcard $(APP_DIR)/test$(TEST)_unmap.rs)
+	else
+		APPS :=  $(wildcard $(APP_DIR)/test$(TEST)_unmap2.rs)
+	endif
 endif
 ELFS := $(patsubst $(APP_DIR)/%.rs, $(TARGET_DIR)/%, $(APPS))
 
