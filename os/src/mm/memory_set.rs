@@ -1,3 +1,5 @@
+use core::arch::asm;
+
 use super::{PageTable, PageTableEntry, PTEFlags};
 use super::{VirtPageNum, VirtAddr, PhysPageNum, PhysAddr};
 use super::{FrameTracker, frame_alloc};
@@ -66,20 +68,26 @@ impl MemorySet {
             self.areas.remove(idx);
         }
     }
-    fn push(&mut self, mut map_area: MapArea, data: Option<&[u8]>) {
-        map_area.map(&mut self.page_table);
+    fn push(&mut self, mut map_area: MapArea, data: Option<&[u8]>) -> isize {
+        if map_area.map(&mut self.page_table) < 0 {
+            return -1;
+        }
         if let Some(data) = data {
             map_area.copy_data(&mut self.page_table, data);
         }
         self.areas.push(map_area);
+        0
     }
     /// Mention that trampoline is not collected by areas.
-    fn map_trampoline(&mut self) {
-        self.page_table.map(
+    fn map_trampoline(&mut self) -> isize {
+        if self.page_table.map(
             VirtAddr::from(TRAMPOLINE).into(),
             PhysAddr::from(strampoline as usize).into(),
             PTEFlags::R | PTEFlags::X,
-        );
+        ) < 0 {
+            return -1;
+        }
+        0
     }
     /// Without kernel stacks.
     pub fn new_kernel() -> Self {
@@ -130,10 +138,13 @@ impl MemorySet {
     }
     /// Include sections in elf and trampoline and TrapContext and user stack,
     /// also returns user_sp and entry point.
-    pub fn from_elf(elf_data: &[u8]) -> (Self, usize, usize) {
+    pub fn from_elf(elf_data: &[u8]) -> Option<(Self, usize, usize)> {
         let mut memory_set = Self::new_bare();
         // map trampoline
-        memory_set.map_trampoline();
+        if memory_set.map_trampoline() < 0 {
+            drop(memory_set);
+            return None;
+        }
         // map program headers of elf, with U flag
         let elf = xmas_elf::ElfFile::new(elf_data).unwrap();
         let elf_header = elf.header;
@@ -158,10 +169,13 @@ impl MemorySet {
                     map_perm,
                 );
                 max_end_vpn = map_area.vpn_range.get_end();
-                memory_set.push(
+                if memory_set.push(
                     map_area,
                     Some(&elf.input[ph.offset() as usize..(ph.offset() + ph.file_size()) as usize])
-                );
+                ) < 0 {
+                    drop(memory_set);
+                    return None;
+                }
             }
         }
         // map user stack with U flags
@@ -170,20 +184,23 @@ impl MemorySet {
         // guard page
         user_stack_bottom += PAGE_SIZE;
         let user_stack_top = user_stack_bottom + USER_STACK_SIZE;
-        memory_set.push(MapArea::new(
+        if memory_set.push(MapArea::new(
             user_stack_bottom.into(),
             user_stack_top.into(),
             MapType::Framed,
             MapPermission::R | MapPermission::W | MapPermission::U,
-        ), None);
+        ), None) < 0 || 
         // map TrapContext
         memory_set.push(MapArea::new(
             TRAP_CONTEXT.into(),
             TRAMPOLINE.into(),
             MapType::Framed,
             MapPermission::R | MapPermission::W,
-        ), None);
-        (memory_set, user_stack_top, elf.header.pt2.entry_point() as usize)
+        ), None) < 0 {
+            drop(memory_set);
+            return None;
+        }
+        Some((memory_set, user_stack_top, elf.header.pt2.entry_point() as usize))
     }
     pub fn from_existed_user(user_space: &MemorySet) -> MemorySet {
         let mut memory_set = Self::new_bare();
@@ -249,20 +266,24 @@ impl MapArea {
             map_perm: another.map_perm,
         }
     }
-    pub fn map_one(&mut self, page_table: &mut PageTable, vpn: VirtPageNum) {
+    pub fn map_one(&mut self, page_table: &mut PageTable, vpn: VirtPageNum) -> isize {
         let ppn: PhysPageNum;
         match self.map_type {
             MapType::Identical => {
                 ppn = PhysPageNum(vpn.0);
             }
             MapType::Framed => {
-                let frame = frame_alloc().unwrap();
+                let frame_result = frame_alloc();
+                if frame_result.is_none() {
+                    return -1;
+                }
+                let frame = frame_result.unwrap();
                 ppn = frame.ppn;
                 self.data_frames.insert(vpn, frame);
             }
         }
         let pte_flags = PTEFlags::from_bits(self.map_perm.bits).unwrap();
-        page_table.map(vpn, ppn, pte_flags);
+        page_table.map(vpn, ppn, pte_flags)
     }
     pub fn unmap_one(&mut self, page_table: &mut PageTable, vpn: VirtPageNum) {
         match self.map_type {
@@ -273,10 +294,13 @@ impl MapArea {
         }
         page_table.unmap(vpn);
     }
-    pub fn map(&mut self, page_table: &mut PageTable) {
+    pub fn map(&mut self, page_table: &mut PageTable) -> isize {
         for vpn in self.vpn_range {
-            self.map_one(page_table, vpn);
+            if self.map_one(page_table, vpn) < 0 {
+                return -1;
+            }
         }
+        0
     }
     pub fn unmap(&mut self, page_table: &mut PageTable) {
         for vpn in self.vpn_range {

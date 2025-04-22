@@ -228,7 +228,16 @@ pub fn munmap(start: usize, len: usize) -> isize {
 }
 
 pub fn spawn(path: &str) -> isize {
-    sys_spawn(path)
+    loop {
+        match sys_spawn(path) {
+            -2 => {
+                sys_yield();
+            }
+            n => {
+                return n;
+            }
+        }
+    }
 }
 
 pub fn dup(fd: usize) -> isize {

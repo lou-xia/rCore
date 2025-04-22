@@ -94,7 +94,11 @@ impl PageTable {
                 break;
             }
             if !pte.is_valid() {
-                let frame = frame_alloc().unwrap();
+                let frame_result = frame_alloc();
+                if frame_result.is_none() {
+                    return result;
+                }
+                let frame = frame_result.unwrap();
                 *pte = PageTableEntry::new(frame.ppn, PTEFlags::V);
                 self.frames.push(frame);
             }
@@ -120,14 +124,20 @@ impl PageTable {
         result
     }
     #[allow(unused)]
-    pub fn map(&mut self, vpn: VirtPageNum, ppn: PhysPageNum, flags: PTEFlags) {
-        let pte = self.find_pte_create(vpn).unwrap();
+    pub fn map(&mut self, vpn: VirtPageNum, ppn: PhysPageNum, flags: PTEFlags) -> isize {
+        let pte_result = self.find_pte_create(vpn);
+        if pte_result.is_none() {
+            return -1;
+        }
+        let pte = pte_result.unwrap();
         assert!(!pte.is_valid(), "vpn {:?} is mapped before mapping", vpn);
         *pte = PageTableEntry::new(ppn, flags | PTEFlags::V);
+        0
     }
     #[allow(unused)]
     pub fn unmap(&mut self, vpn: VirtPageNum) {
         let pte = self.find_pte_create(vpn).unwrap();
+        // println!("vpn = {:?}", vpn);
         assert!(pte.is_valid(), "vpn {:?} is invalid before unmapping", vpn);
         *pte = PageTableEntry::empty();
     }

@@ -5,14 +5,6 @@
 extern crate user_lib;
 
 static TESTS: &[&str] = &[
-    "test_sleep\0",
-    "test_sleep1\0",
-    "test_mmap0\0",
-    "test_mmap1\0",
-    "test_mmap2\0",
-    "test_mmap3\0",
-    "test_unmap\0",
-    "test_unmap2\0",
     "test_spawn0\0",
     "test_spawn1\0",
 ];

@@ -1,5 +1,7 @@
 mod context;
 
+use core::arch::{asm, global_asm};
+
 use riscv::register::{
     mtvec::TrapMode,
     stvec,
@@ -109,7 +111,7 @@ pub fn trap_return() -> ! {
             in("a0") trap_cx_ptr,
             in("a1") user_satp,
             options(noreturn)
-        );
+        )
     }
 }
 
