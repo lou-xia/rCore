@@ -20,12 +20,18 @@ const SYSCALL_GETPID: usize = 172;
 const SYSCALL_FORK: usize = 220;
 const SYSCALL_EXEC: usize = 221;
 const SYSCALL_WAITPID: usize = 260;
+const SYSCALL_LINKAT: usize = 37;
+const SYSCALL_UNLINKAT: usize = 35;
+const SYSCALL_FSTAT: usize = 80;
 
 mod fs;
 mod process;
 
 use fs::*;
 use process::*;
+pub use fs::{Stat, StatMode};
+
+use crate::config::AT_FDCWD;
 /// handle syscall exception with `syscall_id` and other arguments
 pub fn syscall(syscall_id: usize, args: [usize; 3]) -> isize {
     match syscall_id {
@@ -40,6 +46,9 @@ pub fn syscall(syscall_id: usize, args: [usize; 3]) -> isize {
         SYSCALL_FORK => sys_fork(),
         SYSCALL_EXEC => sys_exec(args[0] as *const u8),
         SYSCALL_WAITPID => sys_waitpid(args[0] as isize, args[1] as *mut i32),
+        SYSCALL_LINKAT => sys_linkat(AT_FDCWD as i32, args[0] as *const u8, AT_FDCWD as i32, args[1] as *const u8, 0),
+        SYSCALL_UNLINKAT => sys_unlinkat(AT_FDCWD as i32, args[0] as *const u8, 0),
+        SYSCALL_FSTAT => sys_fstat(args[0], args[1] as *mut Stat),
         _ => panic!("Unsupported syscall_id: {}", syscall_id),
     }
 }

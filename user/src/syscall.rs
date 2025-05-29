@@ -1,5 +1,7 @@
 use core::arch::asm;
 
+use crate::Stat;
+
 const SYSCALL_OPEN: usize = 56;
 const SYSCALL_CLOSE: usize = 57;
 const SYSCALL_READ: usize = 63;
@@ -11,6 +13,9 @@ const SYSCALL_GETPID: usize = 172;
 const SYSCALL_FORK: usize = 220;
 const SYSCALL_EXEC: usize = 221;
 const SYSCALL_WAITPID: usize = 260;
+const SYSCALL_LINKAT: usize = 37;
+const SYSCALL_UNLINKAT: usize = 35;
+const SYSCALL_FSTAT: usize = 80;
 
 fn syscall(id: usize, args: [usize; 3]) -> isize {
     let mut ret: isize;
@@ -72,4 +77,16 @@ pub fn sys_exec(path: &str) -> isize {
 
 pub fn sys_waitpid(pid: isize, exit_code: *mut i32) -> isize {
     syscall(SYSCALL_WAITPID, [pid as usize, exit_code as usize, 0])
+}
+
+pub fn sys_linkat(_old_dirfd: i32, old_path: &str, _new_dirfd: i32, new_path: &str, _flags: i32) -> isize {
+    syscall(SYSCALL_LINKAT,[old_path.as_ptr() as usize, new_path.as_ptr() as usize, 0])
+}
+
+pub fn sys_unlinkat(_dirfd: i32, path: &str, _flags: i32) -> isize {
+    syscall(SYSCALL_UNLINKAT, [path.as_ptr() as usize, 0, 0])
+}
+
+pub fn sys_fstat(fd: i32, stat: *mut Stat) -> isize {
+    syscall(SYSCALL_FSTAT, [fd as usize, stat as usize, 0])
 }

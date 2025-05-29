@@ -15,7 +15,8 @@ TEST ?=
 elf: $(APPS)
 	@cargo build --release
 ifeq ($(TEST), 1)
-	@$(CP) $(TARGET_DIR)/usertests $(TARGET_DIR)/initproc
+	# @$(CP) $(TARGET_DIR)/usertests $(TARGET_DIR)/initproc
+	@$(CP) $(TARGET_DIR)/linktest $(TARGET_DIR)/initproc
 endif
 
 binary: elf

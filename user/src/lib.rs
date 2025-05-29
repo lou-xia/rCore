@@ -16,6 +16,7 @@ use buddy_system_allocator::LockedHeap;
 use syscall::*;
 
 const USER_HEAP_SIZE: usize = 32768;
+pub const AT_FDCWD: i32 = -100;
 
 static mut HEAP_SPACE: [u8; USER_HEAP_SIZE] = [0; USER_HEAP_SIZE];
 
@@ -110,5 +111,55 @@ pub fn sleep(period_ms: usize) {
     let start = sys_get_time();
     while sys_get_time() < start + period_ms as isize {
         sys_yield();
+    }
+}
+
+pub fn linkat(old_dirfd: i32, old_path: &str, new_dirfd: i32, new_path: &str, flags: i32) -> isize {
+    sys_linkat(old_dirfd, old_path, new_dirfd, new_path, flags)
+}
+
+pub fn unlinkat(dirfd: i32, path: &str, flags: i32) -> isize {
+    sys_unlinkat(dirfd, path, flags)
+}
+
+pub fn fstat(fd: i32, stat: &mut Stat) -> isize {
+    sys_fstat(fd, stat)
+}
+
+#[repr(C)]
+#[derive(Debug)]
+pub struct Stat {
+    /// 文件所在磁盘驱动器号，该实验中写死为 0 即可
+    pub dev: u64,
+    /// inode 文件所在 inode 编号
+    pub ino: u64,
+    /// 文件类型
+    pub mode: StatMode,
+    /// 硬链接数量，初始为1
+    pub nlink: u32,
+    /// 无需考虑，为了兼容性设计
+    pub pad: [u64; 7],
+}
+
+bitflags! {
+    /// StatMode 定义：
+    pub struct StatMode: u32 {
+        const NULL  = 0;
+        /// directory
+        const DIR   = 0o040000;
+        /// ordinary regular file
+        const FILE  = 0o100000;
+    }
+}
+
+impl Stat {
+    pub fn default() -> Self {
+        Stat {
+            dev: 0,
+            ino: 0,
+            mode: StatMode::NULL,
+            nlink: 1,
+            pad: [0; 7],
+        }
     }
 }

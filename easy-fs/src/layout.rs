@@ -87,6 +87,7 @@ pub struct DiskInode {
     pub direct: [u32; INODE_DIRECT_COUNT],
     pub indirect1: u32,
     pub indirect2: u32,
+    pub link_count: u32,
     type_: DiskInodeType,
 }
 
@@ -98,6 +99,7 @@ impl DiskInode {
         self.direct.iter_mut().for_each(|v| *v = 0);
         self.indirect1 = 0;
         self.indirect2 = 0;
+        self.link_count = 1;
         self.type_ = type_;
     }
     /// Whether this inode is a directory
@@ -482,6 +484,11 @@ impl DirEntry {
     /// Get inode number of the entry
     pub fn inode_number(&self) -> u32 {
         self.inode_number
+    }
+    /// 
+    pub fn from_bytes(bytes: &[u8; DIRENT_SZ]) -> &Self {
+        // Safety: We can guarantee that size_of::<Self>() == DIRENT_SZ
+        unsafe { core::mem::transmute::<&[u8; DIRENT_SZ], &Self>(bytes) }
     }
 }
 

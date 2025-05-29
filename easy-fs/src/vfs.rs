@@ -24,6 +24,23 @@ where
     RCacheMgr: lock_api::RawMutex,
     RCache: lock_api::RawMutex,
 {
+    /// Get the nlink of the current Inode.
+    pub fn get_nlink(&self) -> u64 {
+        let fs_guard = self.fs.lock();
+        let mut bcache_mgr = fs_guard.bcache_mgr.lock();
+        bcache_mgr.read_block(
+            self.block_id,
+            self.block_offset,
+            |disk_inode: &DiskInode| disk_inode.link_count as u64,
+        )
+    }
+    /// Get the inode number of the current Inode.
+    pub fn get_ino(&self) -> u32 {
+        let mut fs_guard = self.fs.lock();
+        fs_guard.sync_transaction(|fs|{
+            fs.get_inode_id(self.block_id as u32, self.block_offset)
+        })
+    }
     /// Get the root inode of an EasyFileSystem.
     pub fn root_inode(
         efs: &Arc<lock_api::Mutex<REasyFS, EasyFileSystem<N, RCacheMgr, RCache>>>,
@@ -125,6 +142,74 @@ where
                 block_offset: new_inode_blk_offset,
                 fs: Arc::clone(&self.fs),
             }))
+        })
+    }
+
+    /// Some functions to finish these tests:
+    /// Make a link to this Inode
+    pub fn linkat(&self, new_name: &str, old_inode: &Arc<Self>) -> isize {
+        assert!(self.is_dir());
+        if self.find(new_name).is_some() {
+            return -1;
+        }
+        let mut fs_guard = self.fs.lock();
+
+        fs_guard.sync_transaction(|fs| {
+            let mut bcache_mgr = fs.bcache_mgr.lock();
+            let old_inode_id = fs.get_inode_id(old_inode.block_id as u32, old_inode.block_offset);
+            let root_inode_blk = bcache_mgr.get_block_cache(self.block_id);
+            root_inode_blk
+                .lock()
+                .write(self.block_offset, |root_inode: &mut DiskInode| {
+                    // append file in the dirent
+                    let file_count = (root_inode.size as usize) / DIRENT_SZ;
+                    let new_size = (file_count + 1) * DIRENT_SZ;
+                    // increase size
+                    fs.increase_size_nolock(new_size as u32, root_inode, &mut bcache_mgr);
+                    // write dirent
+                    let dirent = DirEntry::new(new_name, old_inode_id);
+                    root_inode.write_at(file_count * DIRENT_SZ, dirent.as_bytes(), &mut bcache_mgr);
+                });
+            let old_inode_blk = bcache_mgr.get_block_cache(old_inode.block_id);
+            old_inode_blk
+                .lock()
+                .write(old_inode.block_offset, |disk_inode: &mut DiskInode| {
+                    disk_inode.link_count += 1;
+                });
+            0
+        })
+    }
+
+    /// Unlink a file with the given name under the root directory.
+    pub fn unlinkat(&self, name: &str) -> isize {
+        assert!(self.is_dir());
+        let mut fs_guard = self.fs.lock();
+
+        fs_guard.sync_transaction(|fs| {
+            let mut bcache_mgr: lock_api::MutexGuard<'_, RCacheMgr, BlockCacheMgr<N, RCache>> = fs.bcache_mgr.lock();
+            let root_inode_blk = bcache_mgr.get_block_cache(self.block_id);
+            let result = root_inode_blk
+                .lock()
+                .write(self.block_offset, |root_inode: &mut DiskInode|{
+                    let file_count = (root_inode.size as usize) / DIRENT_SZ;
+                    for i in 0..file_count {
+                        let buf = &mut [0u8; DIRENT_SZ];
+                        root_inode.read_at(i * DIRENT_SZ, buf, &mut bcache_mgr);
+                        let dirent = DirEntry::from_bytes(buf);
+                        if dirent.name() == name {
+                            // found the file, remove it
+                            root_inode.write_at(i * DIRENT_SZ, DirEntry::empty().as_bytes(), &mut bcache_mgr);
+                            let (block_id, block_offset) = fs.get_disk_inode_pos(dirent.inode_number());
+                            let inode_blk = bcache_mgr.get_block_cache(block_id as usize);
+                            let mut inode_blk_guard = inode_blk.lock();
+                            let disk_inode: &mut DiskInode = inode_blk_guard.value_mut_at_offset(block_offset);
+                            disk_inode.link_count -= 1;
+                            return 0;
+                        }
+                    }
+                    -1
+                });
+            result
         })
     }
 

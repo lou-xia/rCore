@@ -8,6 +8,7 @@ use super::File;
 use crate::drivers::BLOCK_DEVICE;
 use crate::mm::UserBuffer;
 use crate::sync::{RawExclusiveLock, UPSafeCell};
+use crate::syscall::{Stat, StatMode};
 use alloc::sync::Arc;
 use alloc::vec::Vec;
 use bitflags::*;
@@ -53,6 +54,22 @@ impl OSInode {
             v.extend_from_slice(&buffer[..len]);
         }
         v
+    }
+
+
+    /// My code:
+    /// get inner inode
+    pub fn get_inner(&self) -> Arc<InodeType> {
+        self.inner.exclusive_access().inode.clone()
+    }
+    /// create a link to a file
+    pub fn linkat(&self, name: &str) -> isize {
+        let inner_inode = self.get_inner();
+        ROOT_INODE.linkat(name, &inner_inode)
+    }
+    /// unlink a file
+    pub fn unlinkat(&self, name: &str) -> isize {
+        ROOT_INODE.unlinkat(name)
     }
 }
 
@@ -160,5 +177,20 @@ impl File for OSInode {
             total_write_size += write_size;
         }
         total_write_size
+    }
+    fn get_stat(&self) -> Stat {
+        let inner = self.inner.exclusive_access();
+        let ino = inner.inode.get_ino() as u64;
+        let mode = if inner.inode.is_dir() {
+            StatMode::DIR
+        } else {
+            StatMode::FILE
+        };
+        let nlink = inner.inode.get_nlink() as u32;
+        let mut stat = Stat::default();
+        stat.ino = ino;
+        stat.mode = mode;
+        stat.nlink = nlink;
+        stat
     }
 }
