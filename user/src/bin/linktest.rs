@@ -30,7 +30,7 @@ pub fn main() -> i32 {
     // read fileb stat
     let mut stat = Stat::default();
     let _fd_stat = fstat(fd as i32, &mut stat);
-    println!("fd_stat: {:#?}", stat);
+    println!("fd_stat: {:?}", stat);
     close(fd);
 
     // unlink fileb
@@ -44,12 +44,16 @@ pub fn main() -> i32 {
     let fd = open(filea, OpenFlags::RDONLY);
     let mut stat = Stat::default();
     let _fd_stat = fstat(fd as i32, &mut stat);
-    println!("fd_stat2: {:#?}", stat);
+    println!("fd_stat2: {:?}", stat);
     close(fd as usize);
+
+    let fd = open(fileb, OpenFlags::RDONLY);
+    println!("now open fileb, result = {}", fd);
 
     for i in 0..read_len {
         print!("{} ", buffer[i] as char);
     }
+    println!("");
 
     assert_eq!(test_str, core::str::from_utf8(&buffer[..read_len]).unwrap(),);
     println!("file_test passed!");

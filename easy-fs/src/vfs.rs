@@ -199,6 +199,7 @@ where
                         if dirent.name() == name {
                             // found the file, remove it
                             root_inode.write_at(i * DIRENT_SZ, DirEntry::empty().as_bytes(), &mut bcache_mgr);
+                            root_inode.size -= DIRENT_SZ as u32;
                             let (block_id, block_offset) = fs.get_disk_inode_pos(dirent.inode_number());
                             let inode_blk = bcache_mgr.get_block_cache(block_id as usize);
                             let mut inode_blk_guard = inode_blk.lock();
